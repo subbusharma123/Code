@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Weather Dashboard</h1>
+        <div class="search-box">
+            <input type="text" id="cityInput" placeholder="Enter city name" aria-label="City name">
+            <button id="searchBtn">Get Weather</button>
+        </div>
+        <div id="error" class="error hidden"></div>
+        <div id="weather" class="weather-card hidden">
+            <h2 id="cityName"></h2>
+            <div class="weather-info">
+                <img id="weatherIcon" src="" alt="Weather icon">
+                <p id="description"></p>
+            </div>
+            <p id="temperature"></p>
+            <p id="humidity"></p>
+            <p id="wind"></p>
+        </div>
+        <div id="loading" class="hidden">Loading...</div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
