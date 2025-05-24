@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Pay Web App with QR Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://pay.google.com/gp/p/js/pay.js"></script>
+    <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <h1 class="text-2xl font-bold mb-4 text-center">Google Pay Payment</h1>
+        <div class="mb-4">
+            <label for="amount" class="block text-sm font-medium text-gray-700">Amount (INR)</label>
+            <input type="number" id="amount" class="mt-1 p-2 w-full border rounded-md" value="100" min="1">
+        </div>
+        <button id="gpay-button" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">Pay with Google Pay</button>
+        <div class="mt-6">
+            <h2 class="text-lg font-semibold mb-2">Scan QR Code</h2>
+            <video id="video" class="w-full h-64 bg-gray-200 rounded-md" autoplay></video>
+            <canvas id="canvas" class="hidden"></canvas>
+            <p id="qr-result" class="mt-2 text-sm text-gray-600"></p>
+        </div>
+    </div>
+
+    <script>
+        const paymentsClient = new google.payments.api.PaymentsClient({ environment: 'TEST' });
+
+        const paymentDataRequest = {
+            apiVersion: 2,
+            apiVersionMinor: 0,
+            allowedPaymentMethods: [{
+                type: 'UPI',
+                parameters: {
+                    payeeVpa: 'subramanyasharma987@okhdfcbank', // Replace with your UPI ID
+                    payeeName: 'Subramanya Sharma B G', // Replace with your name
+                    transactionReferenceId: 'txn_' + Math.random().toString(36).substr(2, 9),
+                    transactionNote: 'Test Payment to Self'
+                },
+                tokenizationSpecification: {
+                    type: 'PAYMENT_GATEWAY',
+                    parameters: {
+                        gateway: 'Razorpay', // Replace with your gateway (e.g., payu, stripe)
+                        gatewayMerchantId: 'your_pos_id' // Replace with your merchant ID
+                    }
+                }
+            }],
+            transactionInfo: {
+                totalPriceStatus: 'FINAL',
+                totalPrice: '100.00',
+                currencyCode: 'INR'
+            },
+            merchantInfo: {
+                merchantName: 'Subramanya Sharma B G',
+                merchantId: 'subramanyasharma987@okhdfcbank' // Replace with your Google Pay merchant ID
+            }
+        };
+
+        document.getElementById('gpay-button').addEventListener('click', () => {
+            const amount = document.getElementById('amount').value;
+            paymentDataRequest.transactionInfo.totalPrice = parseFloat(amount).toFixed(2);
+            paymentsClient.isReadyToPay({
+                apiVersion: 2,
+                apiVersionMinor: 0,
+                allowedPaymentMethods: [{
+                    type: 'UPI',
+                    parameters: {}
+                }]
+            }).then(response => {
+                if (response.result) {
+                    paymentsClient.loadPaymentData(paymentDataRequest).then(paymentData => {
+                        fetch('/process_payment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(paymentData)
+                        }).then(response => response.json()).then(data => {
+                            alert(data.message);
+                        });
+                    }).catch(err => {
+                        console.error('Payment error:', err);
+                        alert('Payment failed: ' + err.message);
+                    });
+                } else {
+                    alert('Google Pay is not available.');
+                }
+            });
+        });
+
+        // QR Code Scanner
+        const video = document.getElementById('video');
+        const canvasElement = document.getElementById('canvas');
+        const canvas = canvasElement.getContext('2d');
+        const qrResult = document.getElementById('qr-result');
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                video.srcObject = stream;
+                video.play();
+                requestAnimationFrame(tick);
+            })
+            .catch(err => {
+                qrResult.textContent = 'Camera access denied: ' + err.message;
+            });
+
+        function tick() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvasElement.height = video.videoHeight;
+                canvasElement.width = video.videoWidth;
+                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                if (code) {
+                    qrResult.textContent = 'Detected: ' + code.data;
+                    if (code.data.startsWith('upi://')) {
+                        window.location.href = code.data; // Redirect to Google Pay app
+                    }
+                }
+            }
+            requestAnimationFrame(tick);
+        }
+    </script>
+</body>
+</html>
